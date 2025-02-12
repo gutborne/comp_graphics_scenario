@@ -1,24 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<title>My first three.js app</title>
-		<style>
-			body { 
-                margin: 0; 
-            }
-			#info {
-				position: absolute;
-				top: 10px;
-				width: 100%;
-				text-align: center;
-				z-index: 100;
-				display:block;
-			}
-		</style>
-	</head>
-	<body>
-		<div id = "info">Description</div>
-		<script type="module" src="/main.js"></script>
-	</body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Camera and Shaders with Three.js</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <!-- Vertex Shader -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        varying vec3 vNormal;
+        void main() {
+            vNormal = normal;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    </script>
+
+    <!-- Fragment Shader -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        varying vec3 vNormal;
+        void main() {
+            vec3 light = vec3(0.5, 0.5, 1.0);
+            light = normalize(light);
+            float dProd = max(0.0, dot(vNormal, light));
+            gl_FragColor = vec4(dProd, dProd, dProd, 1.0);
+        }
+    </script>
+
+    <!-- Three.js and GLTFLoader -->
+    
+    <script type="module" src="main.js"></script>
+</body>
 </html>
