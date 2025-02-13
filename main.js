@@ -94,3 +94,130 @@ function animate() {
     renderer.render(scene, camera);
 }
 animate();
+
+/*
+var gl;
+var canvas;
+var program;
+var modelViewMatrix;
+var projectionMatrix;
+var cameraPosition = vec3(3, 3, 3); // Posição inicial da câmera
+var target = vec3(0, 0, 0); // Ponto para onde a câmera está olhando
+var up = vec3(0, 1, 0); // Vetor "para cima" da câmera
+
+var isDragging = false;
+var lastMouseX = null;
+var lastMouseY = null;
+var yaw = 0; // Rotação horizontal
+var pitch = 0; // Rotação vertical
+var radius = length(cameraPosition); // Distância da câmera ao alvo
+
+window.onload = function init() {
+    canvas = document.getElementById("gl-canvas");
+    gl = WebGLUtils.setupWebGL(canvas);
+    if (!gl) { alert("WebGL isn't available"); }
+
+    // Seis vértices para dois triângulos
+    var vertices = [
+        vec3(-1, -1, 0),
+        vec3(0, 1, 0),
+        vec3(1, -1, 0),
+        vec3(1, 1, -1),
+        vec3(2, 3, -1),
+        vec3(3, 1, -1)
+    ];
+
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+
+    program = initShaders(gl, "vertex-shader", "fragment-shader");
+    gl.useProgram(program);
+
+    var bufferId = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, bufferId);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW);
+
+    var vPosition = gl.getAttribLocation(program, "vPosition");
+    gl.vertexAttribPointer(vPosition, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vPosition);
+
+    // Inicializa as matrizes
+    modelViewMatrix = mat4();
+    projectionMatrix = mat4();
+
+    // Configura a matriz de projeção
+    projectionMatrix = perspective(45, canvas.width / canvas.height, 0.1, 100);
+
+    // Configura a matriz de visualização
+    modelViewMatrix = lookAt(cameraPosition, target, up);
+
+    // Obtém as localizações das variáveis uniformes
+    var modelViewMatrixLoc = gl.getUniformLocation(program, "modelViewMatrix");
+    var projectionMatrixLoc = gl.getUniformLocation(program, "projectionMatrix");
+
+    // Passa as matrizes para os shaders
+    gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
+    gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
+
+    // Configura os eventos de arrastar o mouse
+    canvas.addEventListener("mousedown", function (event) {
+        isDragging = true;
+        lastMouseX = event.clientX;
+        lastMouseY = event.clientY;
+    });
+
+    canvas.addEventListener("mousemove", function (event) {
+        if (isDragging) {
+            var deltaX = event.clientX - lastMouseX;
+            var deltaY = event.clientY - lastMouseY;
+
+            yaw += deltaX * 0.01; // Atualiza a rotação horizontal
+            pitch += deltaY * 0.01; // Atualiza a rotação vertical
+
+            lastMouseX = event.clientX;
+            lastMouseY = event.clientY;
+
+            updateCamera();
+        }
+    });
+
+    canvas.addEventListener("mouseup", function (event) {
+        isDragging = false;
+    });
+
+    // Configura o evento de teclado para o zoom
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "ArrowUp") { // Tecla "up" pressionada
+            radius -= 0.1; // Aproxima a câmera
+        } else if (event.key === "ArrowDown") { // Tecla "down" pressionada
+            radius += 0.1; // Afasta a câmera
+        }
+
+        updateCamera();
+    });
+
+    render();
+};
+
+function updateCamera() {
+    // Atualiza a posição da câmera com base no raio, yaw e pitch
+    cameraPosition = vec3(
+        radius * Math.cos(pitch) * Math.sin(yaw),
+        radius * Math.sin(pitch),
+        radius * Math.cos(pitch) * Math.cos(yaw)
+    );
+
+    // Atualiza a matriz de visualização
+    modelViewMatrix = lookAt(cameraPosition, target, up);
+
+    // Passa a matriz de visualização atualizada para o shader
+    var modelViewMatrixLoc = gl.getUniformLocation(program, "modelViewMatrix");
+    gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
+}
+
+function render() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3); // Desenha o primeiro triângulo
+    gl.drawArrays(gl.TRIANGLES, 3, 3); // Desenha o segundo triângulo
+    requestAnimationFrame(render);
+}*/
