@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "three": "^0.173.0"
+    "three": "^0.173.0",
+    "webgl-obj-loader": "^2.0.8"
   },
   "devDependencies": {
     "@types/three": "^0.173.0",

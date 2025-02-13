@@ -1,96 +1,152 @@
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+let gl;
+let shaderProgram;
+let mesh; // Will hold the loaded OBJ mesh
+let vertexPositionAttribute, vertexColorAttribute;
+let perspectiveMatrix, modelViewMatrix;
 
-// Custom Perspective Camera
-function perspective(fovy, aspect, near, far) {
-    const f = 1.0 / Math.tan(fovy * Math.PI / 360); // Convert fovy to radians
-    const d = far - near;
+async function init() {
+    const canvas = document.getElementById("glCanvas");
+    gl = canvas.getContext("webgl");
 
-    const result = new THREE.Matrix4();
-    result.set(
-        f / aspect, 0, 0, 0,
-        0, f, 0, 0,
-        0, 0, -(near + far) / d, -1,
-        0, 0, (-2 * near * far) / d, 0
-    );
+    if (!gl) {
+        alert("Unable to initialize WebGL. Your browser or machine may not support it.");
+        return;
+    }
 
-    return result;
+    //it should be grey background, but instead it will change the object's color
+    gl.clearColor(0.5, 0.5, 0.5, 1.0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+
+    // Initialize shaders
+    await initShaders();
+
+    // Load the OBJ model
+    await loadOBJ('/pokeball.obj'); // Replace 'your_model.obj' with the path to your OBJ file
+
+    // Start rendering
+    render();
 }
 
-// Scene setup
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+async function initShaders() {
+    const vsSource = `
+        attribute vec4 aVertexPosition;
+        attribute vec4 aVertexColor;
 
-// Shader Material
-const vertexShader = document.getElementById('vertexShader').textContent;
-const fragmentShader = document.getElementById('fragmentShader').textContent;
-const customMaterial = new THREE.ShaderMaterial({
-    vertexShader: vertexShader,
-    fragmentShader: fragmentShader,
-    side: THREE.DoubleSide // Ensure both sides of the mesh are rendered
-});
+        uniform mat4 uModelViewMatrix;
+        uniform mat4 uPerspectiveMatrix;
 
-// GLTF Loader
-const loader = new GLTFLoader();
-const light = new THREE.AmbientLight(0xffffff, 1); // Soft white light
-const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+        varying lowp vec4 vColor;
 
-// Load cube.glb
-loader.load('cube.glb', function (gltf) {
-    const cube = gltf.scene;
-    cube.position.set(0, -50, -50);
-    cube.scale.set(1, 1, 1);
-
-    // Traverse the cube and apply custom material
-    cube.traverse((child) => {
-        if (child.isMesh) {
-            child.material = customMaterial;
+        void main(void) {
+            gl_Position = uPerspectiveMatrix * uModelViewMatrix * aVertexPosition;
+            vColor = aVertexColor;
         }
-    });
+    `;
 
-    scene.add(cube);
-}, undefined, function (error) {
-    console.error("GLTF Loading Error:", error);
-});
+    const fsSource = `
+        varying lowp vec4 vColor;
 
-// Load sphere_bot.glb
-loader.load('sphere_bot.glb', function (gltf) {
-    const sphere = gltf.scene;
-    sphere.position.set(-2, 0, 0);
-    sphere.scale.set(1, 1, 1);
-
-    // Traverse the sphere and apply custom material
-    sphere.traverse((child) => {
-        if (child.isMesh) {
-            child.material = customMaterial;
+        void main(void) {
+            gl_FragColor = vColor;
         }
-    });
+    `;
 
-    scene.add(sphere);
-}, undefined, function (error) {
-    console.error("GLTF Loading Error:", error);
-});
+    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
-// Add lights
-scene.add(light);
-directionalLight.position.set(5, 5, 5);
-scene.add(directionalLight);
+    shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
 
-// Set camera position
-camera.position.set(0, 3, 7);
+    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+        return null;
+    }
 
-// Animation loop
-function animate() {
-    requestAnimationFrame(animate);
+    gl.useProgram(shaderProgram);
 
-    // Apply custom projection matrix
-    const aspect = window.innerWidth / window.innerHeight;
-    const projectionMatrix = perspective(75, aspect, 0.1, 1000);
-    camera.projectionMatrix = projectionMatrix;
+    vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+    gl.enableVertexAttribArray(vertexPositionAttribute);
 
-    renderer.render(scene, camera);
+   vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
+    gl.enableVertexAttribArray(vertexColorAttribute); // Enable the color attribute
 }
-animate();
+
+function createShader(gl, type, source) {
+    const shader = gl.createShader(type);
+
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+    }
+
+    return shader;
+}
+
+async function loadOBJ(modelPath) {
+    const response = await fetch(modelPath);
+    const text = await response.text();
+
+    const obj = new OBJ.Mesh(text);
+    OBJ.initMeshBuffers(gl, obj); // Initialize buffers
+
+    // Create a default color buffer (white color for all vertices)
+    const colors = [];
+    for (let i = 0; i < obj.vertices.length / 3; i++) {
+        colors.push(0.2, 0.2, 0.2, 0.89); // RGBA (white)
+    }
+
+    obj.vertexColorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexColorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+    obj.vertexColorBuffer.itemSize = 4; // RGBA = 4 components
+    obj.vertexColorBuffer.numItems = colors.length / 4;
+
+    mesh = obj;
+}
+
+
+function render() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    perspectiveMatrix = mat4.create();
+    mat4.perspective(perspectiveMatrix,
+        45 * Math.PI / 180,
+        gl.canvas.clientWidth / gl.canvas.clientHeight,
+        0.1,
+        100.0);
+
+    modelViewMatrix = mat4.create();
+    mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, 0.0, -6.0]); // Translate back
+    
+    // Vertex position buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vertexBuffer);
+    gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+
+    // Vertex color buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vertexColorBuffer);
+    gl.vertexAttribPointer(vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
+
+    
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indexBuffer);
+
+    gl.uniformMatrix4fv(
+        gl.getUniformLocation(shaderProgram, 'uPerspectiveMatrix'),
+        false,
+        perspectiveMatrix);
+    gl.uniformMatrix4fv(
+        gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+        false,
+        modelViewMatrix);
+
+    gl.drawElements(gl.TRIANGLES, mesh.indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+    requestAnimationFrame(render);
+}
+
+init();

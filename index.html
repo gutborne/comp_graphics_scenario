@@ -3,35 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Custom Camera and Shaders with Three.js</title>
+    <title>WebGL Curved Objects</title>
     <style>
-        body { margin: 0; }
-        canvas { display: block; }
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
     </style>
 </head>
 <body>
-    <!-- Vertex Shader -->
-    <script id="vertexShader" type="x-shader/x-vertex">
-        varying vec3 vNormal;
-        void main() {
-            vNormal = normal;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-    </script>
-
-    <!-- Fragment Shader -->
-    <script id="fragmentShader" type="x-shader/x-fragment">
-        varying vec3 vNormal;
-        void main() {
-            vec3 light = vec3(0.5, 0.5, 1.0);
-            light = normalize(light);
-            float dProd = max(0.0, dot(vNormal, light));
-            gl_FragColor = vec4(dProd, dProd, dProd, 1.0);
-        }
-    </script>
-
-    <!-- Three.js and GLTFLoader -->
-    
-    <script type="module" src="main.js"></script>
+    <canvas id="glCanvas" width="1000" height="500"></canvas>
+    <!-- Include glMatrix library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+    <!-- Include OBJ loader library -->
+    <script src="https://cdn.jsdelivr.net/npm/webgl-obj-loader@2.0.8/dist/webgl-obj-loader.min.js"></script>
+    <!-- Include main JavaScript file -->
+    <script src="main.js"></script>
 </body>
 </html>
