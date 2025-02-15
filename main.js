@@ -18,8 +18,9 @@ async function init() {
     gl.depthFunc(gl.LEQUAL);
 
     await initShaders();
-    //await loadOBJ("pineapple", "/pineapple2.obj", "/pineapple2.jpeg", [-1.6, -2.0, -5.0]);
     await loadOBJ("vase_A", "/vase_A.obj", "/textures/Vase_A_16Bits_BaseColor.png", [0.0, -0.18, -0.5]);
+    await loadOBJ("vase_B", "/vase_B.obj", "/textures/Vase_B_16Bits_BaseColor.png", [0.1, -0.18, -0.5]);
+    await loadOBJ("vase_C", "/vase_C.obj", "/textures/Vase_C_16Bits_BaseColor.png", [-0.1, -0.18, -0.5]);
 
     render();
 }
