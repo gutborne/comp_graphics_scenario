@@ -6,17 +6,12 @@ let vertexPositionAttribute, vertexTexCoordAttribute;
 let perspectiveMatrix;
 let modelViewMatrices = {}; // Store different model positions
 
-// Camera parameters
-let cameraDepth = 5.0; // Distance from the scene
-let cameraRotateX = 0; // Rotation around the X-axis (pitch)
-let cameraRotateY = 0; // Rotation around the Y-axis (yaw)
-let cameraTranslateX = 0; // Translation along the X-axis
-let cameraTranslateY = 0; // Translation along the Y-axis
-let fov = 45; // Field of view
-let aspectRatio = 1.0; // Aspect ratio
-
-// View matrix for the camera
-let viewMatrix = mat4.create();
+// Camera parameters (Spherical Coordinates)
+let cameraRadius = 5;      // Distance from origin
+let cameraTheta = 0;       // Angle around the Y-axis (azimuth)
+let cameraPhi = 0;         // Angle from the Y-axis (elevation)
+let fov = 45;              // Initial FOV
+let aspectRatio = 1.0;     // Initial aspect ratio
 
 async function init() {
     const canvas = document.getElementById("glCanvas");
@@ -34,27 +29,25 @@ async function init() {
     await loadOBJ("vase_B", "/vase_B.obj", "/textures/Vase_B_16Bits_BaseColor.png", [0.1, -0.18, -0.5]);
     await loadOBJ("vase_C", "/vase_C.obj", "/textures/Vase_C_16Bits_BaseColor.png", [-0.1, -0.18, -0.5]);
 
-    // Add event listeners for sliders
-    document.getElementById("depthSlider").addEventListener("input", (event) => {
-        cameraDepth = parseFloat(event.target.value);
+    // Initialize slider event listeners
+    document.getElementById("depthSlider").addEventListener("input", function() {
+        cameraRadius = parseFloat(this.value);
     });
-    document.getElementById("rotateXSlider").addEventListener("input", (event) => {
-        cameraRotateX = parseFloat(event.target.value);
+
+    document.getElementById("rotationSlider").addEventListener("input", function() {
+        cameraTheta = parseFloat(this.value);
     });
-    document.getElementById("rotateYSlider").addEventListener("input", (event) => {
-        cameraRotateY = parseFloat(event.target.value);
+
+    document.getElementById("elevationSlider").addEventListener("input", function() {
+        cameraPhi = parseFloat(this.value);
     });
-    document.getElementById("translateXSlider").addEventListener("input", (event) => {
-        cameraTranslateX = parseFloat(event.target.value);
+
+    document.getElementById("fovSlider").addEventListener("input", function() {
+        fov = parseFloat(this.value);
     });
-    document.getElementById("translateYSlider").addEventListener("input", (event) => {
-        cameraTranslateY = parseFloat(event.target.value);
-    });
-    document.getElementById("fovSlider").addEventListener("input", (event) => {
-        fov = parseFloat(event.target.value);
-    });
-    document.getElementById("aspectRatioSlider").addEventListener("input", (event) => {
-        aspectRatio = parseFloat(event.target.value);
+
+    document.getElementById("aspectRatioSlider").addEventListener("input", function() {
+        aspectRatio = parseFloat(this.value);
     });
 
     render();
@@ -80,100 +73,106 @@ async function initShaders() {
             gl_FragColor = texture2D(uTexture, vTexCoord);
         }
     `;
+    
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+    
     shaderProgram = gl.createProgram();
+    
     gl.attachShader(shaderProgram, vertexShader);
     gl.attachShader(shaderProgram, fragmentShader);
+    
     gl.linkProgram(shaderProgram);
+    
     if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
         alert("Shader program failed to initialize: " + gl.getProgramInfoLog(shaderProgram));
         return;
     }
+    
     gl.useProgram(shaderProgram);
+    
     vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
     gl.enableVertexAttribArray(vertexPositionAttribute);
+    
     vertexTexCoordAttribute = gl.getAttribLocation(shaderProgram, "aTexCoord");
     gl.enableVertexAttribArray(vertexTexCoordAttribute);
 }
 
 function createShader(gl, type, source) {
     const shader = gl.createShader(type);
+    
     gl.shaderSource(shader, source);
+    
     gl.compileShader(shader);
+    
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         alert("Shader compilation error: " + gl.getShaderInfoLog(shader));
         return null;
     }
+    
     return shader;
 }
 
 async function loadOBJ(name, modelPath, texturePath, position) {
     const response = await fetch(modelPath);
+    
     const text = await response.text();
+    
     const obj = new OBJ.Mesh(text);
+    
     OBJ.initMeshBuffers(gl, obj);
 
-    // Load Texture
-    const texture = await loadTexture(texturePath);
-    meshTextures[name] = texture;
+   // Load Texture
+   const texture = await loadTexture(texturePath);
+   meshTextures[name] = texture;
 
-    meshes[name] = obj;
-    modelViewMatrices[name] = mat4.create();
-    mat4.translate(modelViewMatrices[name], modelViewMatrices[name], position);
+   meshes[name] = obj;
+   modelViewMatrices[name] = mat4.create();
+   mat4.translate(modelViewMatrices[name], modelViewMatrices[name], position);
 }
 
 function loadTexture(url) {
-    return new Promise((resolve) => {
-        const texture = gl.createTexture();
-        const image = new Image();
-        image.onload = function () {
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-            gl.generateMipmap(gl.TEXTURE_2D);
-            resolve(texture);
-        };
-        image.src = url;
-    });
-}
-
-function updateViewMatrix() {
-    // Reset the view matrix
-    mat4.identity(viewMatrix);
-
-    // Translate the camera back by `cameraDepth`
-    mat4.translate(viewMatrix, viewMatrix, [0, 0, -cameraDepth]);
-
-    // Rotate the camera around the X and Y axes
-    mat4.rotateX(viewMatrix, viewMatrix, cameraRotateX * Math.PI / 180);
-    mat4.rotateY(viewMatrix, viewMatrix, cameraRotateY * Math.PI / 180);
-
-    // Translate the camera horizontally and vertically
-    mat4.translate(viewMatrix, viewMatrix, [cameraTranslateX, cameraTranslateY, 0]);
+   return new Promise((resolve) => {
+       const texture = gl.createTexture();
+       const image = new Image();
+       image.onload = function () {
+           gl.bindTexture(gl.TEXTURE_2D, texture);
+           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+           gl.generateMipmap(gl.TEXTURE_2D);
+           resolve(texture);
+       };
+       image.src = url;
+   });
 }
 
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // Update the perspective matrix
+    // Update perspective matrix based on slider values
     perspectiveMatrix = mat4.create();
     mat4.perspective(perspectiveMatrix, fov * Math.PI / 180, aspectRatio, 0.1, 100.0);
 
-    // Update the view matrix based on camera parameters
-    updateViewMatrix();
+    // Calculate camera position in Cartesian coordinates
+    const cameraX = cameraRadius * Math.sin(cameraPhi * Math.PI / 180) * Math.cos(cameraTheta * Math.PI / 180);
+    const cameraY = cameraRadius * Math.cos(cameraPhi * Math.PI / 180);
+    const cameraZ = cameraRadius * Math.sin(cameraPhi * Math.PI / 180) * Math.sin(cameraTheta * Math.PI / 180);
+
+    // Create view matrix
+    let viewMatrix = mat4.create();
+    mat4.lookAt(viewMatrix, [cameraX, cameraY, cameraZ], [0, 0, 0], [0, 1, 0]);
 
     for (const name in meshes) {
+        // Combine the view and model matrices
+        let modelViewMatrix = mat4.create();
+        mat4.multiply(modelViewMatrix, viewMatrix, modelViewMatrices[name]);
+
         gl.bindBuffer(gl.ARRAY_BUFFER, meshes[name].vertexBuffer);
         gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
-        
+
         gl.bindBuffer(gl.ARRAY_BUFFER, meshes[name].textureBuffer);
         gl.vertexAttribPointer(vertexTexCoordAttribute, 2, gl.FLOAT, false, 0, 0);
-        
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, meshes[name].indexBuffer);
 
-        // Combine the view matrix with the model matrix
-        const modelViewMatrix = mat4.create();
-        mat4.multiply(modelViewMatrix, viewMatrix, modelViewMatrices[name]);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, meshes[name].indexBuffer);
 
         gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, 'uPerspectiveMatrix'), false, perspectiveMatrix);
         gl.uniformMatrix4fv(gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'), false, modelViewMatrix);
@@ -185,11 +184,8 @@ function render() {
 
         gl.drawElements(gl.TRIANGLES, meshes[name].indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
     }
+
     requestAnimationFrame(render);
 }
 
 init();
-
-//problems:
-//1.objects are in low-definition
-//2.problems with rotation and translation
