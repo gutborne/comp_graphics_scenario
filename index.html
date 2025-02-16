@@ -9,18 +9,27 @@
             overflow: hidden;
         }
         #glCanvas {
-            height: 80vh; /* Reduced canvas height to make space for sliders */
+            height: 76vh; /* Reduced canvas height to make space for sliders */
             display: block;
         }
         .slider-container {
             display: flex;
-            justify-content: space-around; /* Distribute sliders evenly */
-            align-items: center; /* Align items vertically */
-            padding: 10px;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
         }
-        .slider-container label {
-            margin-right: 5px; /* Add some space between label and slider */
+
+        .slider-container div {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+
+        input[type="range"] {
+            flex-grow: 1;
+        }
+
+
     </style>
 </head>
 <body>
@@ -29,25 +38,36 @@
     <div class="slider-container">
         <div>
             <label for="depthSlider">Radius:</label>
+            <span id="depthMin">1</span>
             <input type="range" id="depthSlider" min="1" max="20" value="5">
+            <span id="depthMax">20</span>
         </div>
         <div>
             <label for="rotationSlider">Theta:</label>
+            <span id="rotationMin">0</span>
             <input type="range" id="rotationSlider" min="0" max="360" value="0">
+            <span id="rotationMax">360</span>
         </div>
         <div>
             <label for="elevationSlider">Phi:</label>
+            <span id="elevationMin">1</span>
             <input type="range" id="elevationSlider" min="1" max="179" value="45">
+            <span id="elevationMax">179</span>
         </div>
         <div>
             <label for="fovSlider">FOV:</label>
+            <span id="fovMin">1</span>
             <input type="range" id="fovSlider" min="1" max="179" value="45">
+            <span id="fovMax">179</span>
         </div>
         <div>
             <label for="aspectRatioSlider">Aspect Ratio:</label>
+            <span id="aspectMin">0.1</span>
             <input type="range" id="aspectRatioSlider" min="0.1" max="5" value="1.0" step="0.01">
+            <span id="aspectMax">5</span>
         </div>
     </div>
+    
 
     
     <!-- Include external libraries -->
