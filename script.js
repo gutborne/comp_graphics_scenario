@@ -17,15 +17,12 @@ var zFar = 100;
 var fov = 45;
 var aspect = 1;
 
-var sphereData; // Definir a variável globalmente
+var objData = null; // Variável para armazenar os dados do objeto carregado
 
 window.onload = function init() {
     canvas = document.getElementById("gl-canvas");
     gl = WebGLUtils.setupWebGL(canvas);
     if (!gl) { alert("WebGL isn't available"); }
-
-    // Gera os dados da esfera
-    sphereData = generateSphere(1.0, 30, 30); // raio, segmentos horizontais, segmentos verticais
 
     // Configurações do WebGL
     gl.viewport(0, 0, canvas.width, canvas.height);
@@ -35,30 +32,6 @@ window.onload = function init() {
     // Carrega os shaders e inicializa os buffers de atributos
     program = initShaders(gl, "vertex-shader", "fragment-shader");
     gl.useProgram(program);
-
-    // Carrega os dados da esfera na GPU
-    var positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, flatten(sphereData.vertices), gl.STATIC_DRAW);
-
-    var normalBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, flatten(sphereData.normals), gl.STATIC_DRAW);
-
-    var indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(sphereData.indices), gl.STATIC_DRAW);
-
-    // Associa as variáveis do shader com o buffer de dados
-    var vPosition = gl.getAttribLocation(program, "vPosition");
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.vertexAttribPointer(vPosition, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(vPosition);
-
-    var vNormal = gl.getAttribLocation(program, "vNormal");
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    gl.vertexAttribPointer(vNormal, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(vNormal);
 
     // Inicializa as matrizes
     modelViewMatrix = mat4();
@@ -135,39 +108,44 @@ window.onload = function init() {
         updateProjectionMatrix();
     });
 
+    // Configura o evento para carregar o arquivo .obj
+    document.getElementById("file-input").addEventListener("change", function (event) {
+        var file = event.target.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var objContent = e.target.result;
+                objData = parseOBJ(objContent);
+                setupOBJBuffers(objData);
+            };
+            reader.readAsText(file);
+        }
+    });
+
     render();
 };
 
-function generateSphere(radius, latitudeBands, longitudeBands) {
+function parseOBJ(text) {
     var vertices = [];
     var normals = [];
     var indices = [];
 
-    for (var latNumber = 0; latNumber <= latitudeBands; latNumber++) {
-        var theta = latNumber * Math.PI / latitudeBands;
-        var sinTheta = Math.sin(theta);
-        var cosTheta = Math.cos(theta);
-
-        for (var longNumber = 0; longNumber <= longitudeBands; longNumber++) {
-            var phi = longNumber * 2 * Math.PI / longitudeBands;
-            var sinPhi = Math.sin(phi);
-            var cosPhi = Math.cos(phi);
-
-            var x = cosPhi * sinTheta;
-            var y = cosTheta;
-            var z = sinPhi * sinTheta;
-
-            normals.push(x, y, z);
-            vertices.push(radius * x, radius * y, radius * z);
-        }
-    }
-
-    for (latNumber = 0; latNumber < latitudeBands; latNumber++) {
-        for (longNumber = 0; longNumber < longitudeBands; longNumber++) {
-            var first = (latNumber * (longitudeBands + 1)) + longNumber;
-            var second = first + longitudeBands + 1;
-            indices.push(first, second, first + 1);
-            indices.push(second, second + 1, first + 1);
+    var lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line.startsWith('v ')) {
+            var parts = line.split(/\s+/);
+            // Ajusta a escala do
+            vertices.push(parseFloat(parts[1]) * 0.1, parseFloat(parts[2]) * 0.1, parseFloat(parts[3]) * 0.1);
+        } else if (line.startsWith('vn ')) {
+            var parts = line.split(/\s+/);
+            normals.push(parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3]));
+        } else if (line.startsWith('f ')) {
+            var parts = line.split(/\s+/);
+            for (var j = 1; j < parts.length; j++) {
+                var vertex = parts[j].split('/');
+                indices.push(parseInt(vertex[0]) - 1);
+            }
         }
     }
 
@@ -176,6 +154,32 @@ function generateSphere(radius, latitudeBands, longitudeBands) {
         normals: normals,
         indices: indices
     };
+}
+
+function setupOBJBuffers(objData) {
+    var positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(objData.vertices), gl.STATIC_DRAW);
+
+    var normalBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(objData.normals), gl.STATIC_DRAW);
+
+    var indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(objData.indices), gl.STATIC_DRAW);
+
+    var vPosition = gl.getAttribLocation(program, "vPosition");
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.vertexAttribPointer(vPosition, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vPosition);
+
+    var vNormal = gl.getAttribLocation(program, "vNormal");
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.vertexAttribPointer(vNormal, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(vNormal);
+
+    objData.indexBuffer = indexBuffer;
 }
 
 function updateCamera() {
@@ -205,6 +209,11 @@ function updateProjectionMatrix() {
 
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.drawElements(gl.TRIANGLES, sphereData.indices.length, gl.UNSIGNED_SHORT, 0); // Desenha a esfera
+
+    if (objData) {
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, objData.indexBuffer);
+        gl.drawElements(gl.TRIANGLES, objData.indices.length, gl.UNSIGNED_SHORT, 0); // Desenha o objeto carregado
+    }
+
     requestAnimationFrame(render);
 }
